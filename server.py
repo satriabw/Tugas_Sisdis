@@ -12,12 +12,13 @@ import datetime
 
 
 def main():
-    HOST = '127.0.0.1'
+    HOST = socket.gethostbyname(socket.gethostname())
     PORT = int(sys.argv[1])
 
     # Serve the connection
     connect(HOST, PORT)
-    
+
+# Handle incoming connection
 def handler(conn, header):
     method = header[0].split(" ")
     content = []
