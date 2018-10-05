@@ -19,8 +19,10 @@ class Route:
         self._route.append({"method": method, "path": path, "handler": handler})
     
     def dispatch(self, path, method):
+        print("Jalan ga ni")
         for item in self._route:
             if item["path"] == path and item["method"] == method:
+                print(item)
                 return item["handler"]
         return None
     
@@ -81,6 +83,7 @@ def validation(func):
 
 @validation
 def getRoot(conn, request):
+    print("Hitted succesfully")
     status = "302 Found"
     loc = "/hello-world"
     msgSuccess = renderMessage(status, None, loc, None, None, None)
@@ -196,6 +199,8 @@ def main():
 
 def handler(conn, req):
     try:
+        print(req._raw_request)
+        print(req.header)
         route.dispatch(cleanURL(req.header["path"]), req.header["method"])(conn, req)
     except TypeError as e:
         print(traceback.format_exc())
