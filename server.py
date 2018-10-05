@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# coding: utf-8
 
 from random import randint
 from urllib.parse import parse_qs
@@ -178,7 +178,7 @@ def postHelloWorld(conn, request):
 
 def main():
     # HOST = socket.gethostbyname(socket.gethostname())
-    HOST = "127.0.0.1"
+    HOST = "0.0.0.0"
     PORT = int(sys.argv[1])
 
     #Get method
@@ -198,6 +198,7 @@ def handler(conn, req):
     try:
         route.dispatch(cleanURL(req.header["path"]), req.header["method"])(conn, req)
     except TypeError as e:
+        print(traceback.format_exc())
         if route.findPath(cleanURL(req.header["path"])):
             notImplemented(conn, req)
             return
@@ -240,25 +241,19 @@ def connect(host, port):
     s.bind((host, port))
     s.listen()
 
-    try:
-        while True:
-            try:
-                conn, addr = s.accept()
+    while True:
+        try:
+            conn, addr = s.accept()
 
-                data = conn.recv(1024)
-                req = HTTPRequest(data)
-                handler(conn, req)
+            data = conn.recv(1024)
+            req = HTTPRequest(data)
+            handler(conn, req)
 
-                conn.shutdown(socket.SHUT_WR)
-                conn.close()
-            except UnicodeDecodeError:
-                status = "400 Bad Request"
-                c_type = "text/plain; charset=UTF-8"
-                msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
-                writeResponse(conn, msgErr)
-
-    except Exception as e:
-        print(traceback.format_exc())
-        s.close()
+            conn.shutdown(socket.SHUT_WR)
+            conn.close()
+        except Exception:
+            print(traceback.format_exc())
+            continue
+                
 
 main()
