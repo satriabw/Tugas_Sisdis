@@ -11,6 +11,27 @@ import os
 import base64
 import datetime
 
+class Route:
+    def __init__(self):
+        self._route = []
+
+    def route(self, method, path, handler):
+        self._route.append({"method": method, "path": path, "handler": handler})
+    
+    def dispatch(self, path, method):
+        for item in self._route:
+            if item["path"] == path and item["method"] == method:
+                return item["handler"]
+        return None
+    
+    def findPath(self, path):
+        for item in self._route:
+            if item["path"] == path:
+                return True
+        return False
+
+route = Route()
+
 class HTTPRequest:
     def __init__(self, request):
         self._raw_request = request
@@ -36,9 +57,6 @@ class HTTPRequest:
                 continue
             if "Content-Length" in info:
                 self.header["content_length"] = info.split(" ")[1]
-        
-        print(self.header)
-
 
     def _build_body(self):
         self._raw_body = self._split_request()[1]
@@ -52,153 +70,143 @@ class HTTPRequest:
     
     def body_query(self, query):
         return parse_qs(self._raw_body)[query]
-
-class Route:
-    def __init__(self):
-        self._route = []
-
-    def route(self, path, method, handler):
-        self._route.append({"method": method, "path": path, "handler": handler})
     
-    def dispatch(self, path, method):
-        return next((item for item in self.route if (item["path"] in path) and item["method"] == method), None)
+
+def validation(func):
+    def func_wrapper(conn, request):
+        if (request.header["http_version"]  not in "HTTP/1.0") and (request.header["http_version"]  not in "HTTP/1.1"):
+            badRequest(conn, request)
+        func(conn, request)
+    return func_wrapper
+
+@validation
+def getRoot(conn, request):
+    status = "302 Found"
+    loc = "/hello-world"
+    msgSuccess = renderMessage(status, None, loc, None, None, None)
+    writeResponse(conn, msgSuccess)
+
+@validation
+def getHelloWorld(conn, request):
+    with open("./hello-world.html", "r") as f:
+        html = f.read()
+        data = html.replace("__HELLO__", "World")
+
+    status = "200 OK"
+    c_type = "text/html"
+    msgSuccess = renderMessage(status, str(len(data)), None, None, c_type, data)
+    writeResponse(conn, msgSuccess) 
+
+@validation
+def getStyle(conn, request):
+    with open("./style.css", "r") as f:
+        css = f.read()
+    
+    status = "200 OK"
+    c_type = "text/css"
+    msgSuccess = renderMessage(status, str(len(css)), None, None, c_type, css)
+    writeResponse(conn, msgSuccess)
+
+@validation
+def getBackground(conn, request):
+    with open("./background.jpg", "rb") as f:
+        img = f.read()
+
+    status = "200 OK"
+    c_type = "image/jpeg"
+    enc = "base64"
+    msgSuccess = renderMessage(status, str(len(img)), None, enc, c_type, "")
+    msgSuccess = msgSuccess + img
+    writeResponse(conn, msgSuccess)
+
+@validation
+def getInfo(conn, request):
+    query = request.header["path"].split("?")
+    data = "No Data"
+
+    try:
+        tipe = exctractUrl(query[1], "type")
+        if tipe == "time":
+            data = "{}".format(datetime.datetime.now())
+        elif tipe == "random":
+            data = "{}".format(randint(111111,999999))
+    except (IndexError, ValueError) as e:
+        pass
+
+    status = "200 OK"
+    c_type = "text/plain; charset=UTF-8"
+    msgSuccess = renderMessage(status, str(len(data)), None, None, c_type, data)
+    writeResponse(conn, msgSuccess)
+
+def notFound(conn, request):
+    status = "404 Not Found"
+    c_type = "text/plain; charset=UTF-8"
+    msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
+    writeResponse(conn, msgErr)
+
+def notImplemented(conn, request):
+    status = "501 Not Implemented"
+    c_type = "text/plain; charset=UTF-8"
+    msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
+    writeResponse(conn, msgErr)
+
+def badRequest(conn, request):
+    status = "400 Bad Request"
+    c_type = "text/plain; charset=UTF-8"
+    msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
+    writeResponse(conn, msgErr)
+
+@validation
+def postHelloWorld(conn, request):
+    try:
+        if request.header["content_type"] == "application/x-www-form-urlencoded":
+            name = request.body_query("name")[0]
+            
+            with open("./hello-world.html", "r") as f:
+                html = f.read()
+                data = html.replace("__HELLO__", str(name))
+
+            status = "200 OK"
+            c_type = "text/html"
+            msgSuccess = renderMessage(status, str(len(data)), None, None, c_type, data)
+            writeResponse(conn, msgSuccess)
+        else:  
+            raise ValueError("Cannot parse the request")
+            
+    except (IndexError, KeyError, ValueError) as e:
+        badRequest(conn, request)
 
 def main():
     # HOST = socket.gethostbyname(socket.gethostname())
     HOST = "127.0.0.1"
     PORT = int(sys.argv[1])
 
+    #Get method
+    route.route("GET", "/", getRoot)
+    route.route("GET", "/hello-world", getHelloWorld)
+    route.route("GET", "/style", getStyle)
+    route.route("GET", "/background", getBackground)
+    route.route("GET", "/info", getInfo)
+
+    #Post Method
+    route.route("POST", "/hello-world", postHelloWorld)
+
     # Serve the connection
     connect(HOST, PORT)
 
-# Handle incoming connection
-def handler(conn, header):
-    method = header[0].split(" ")
-    content = []
-    length = []
-
-    for info in header:
-        if "Content-Type" in info:
-            content = info.split(" ")
-            continue
-        if "Content-Length" in info:
-            length = info.split(" ")
-
-
-    msgSuccess = ""
-    msgErr = ""
-
-
+def handler(conn, req):
     try:
-        if (method[2] not in "HTTP/1.0") and (method[2] not in "HTTP/1.1"):
-            status = "400 Bad Request"
-            c_type = "text/plain; charset=UTF-8"
-            msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
-            raise ValueError("Cannot parse the request")
-
-        if method[1] == "/hello-world":
-            if method[0] == "GET":
-                with open("./hello-world.html", "r") as f:
-                    html = f.read()
-                    data = html.replace("__HELLO__", "World")
-            
-                status = "200 OK"
-                c_type = "text/html"
-                msgSuccess = renderMessage(status, str(len(data)), None, None, c_type, data)
-                writeResponse(conn, msgSuccess)
-            elif method[0] == "POST":
-                status = "400 Bad Request"     
-                c_type = "text/plain; charset=UTF-8"
-                msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
-                try:
-                    if content[1] == "application/x-www-form-urlencoded":
-                        name = exctractUrl(header[-1], "name")
-                        
-                        with open("./hello-world.html", "r") as f:
-                            html = f.read()
-                            data = html.replace("__HELLO__", str(name))
-
-                        status = "200 OK"
-                        c_type = "text/html"
-                        msgSuccess = renderMessage(status, str(len(data)), None, None, c_type, data)
-                        writeResponse(conn, msgSuccess)
-                    else:  
-                        raise ValueError("Cannot parse the request")
-                        
-                except (IndexError, KeyError) as e:
-                    raise ValueError("Cannot parse the request")
-
-        elif method[1] == "/style":
-            if method[0] == "GET":
-                with open("./style.css", "r") as f:
-                    css = f.read()
-                
-                status = "200 OK"
-                c_type = "text/css"
-                msgSuccess = renderMessage(status, str(len(css)), None, None, c_type, css)
-                writeResponse(conn, msgSuccess)
-
-        elif method[1] == "/background":
-            if method[0] == "GET":
-                with open("./background.jpg", "rb") as f:
-                    img = f.read()
-
-                status = "200 OK"
-                c_type = "image/jpeg"
-                enc = "base64"
-                msgSuccess = renderMessage(status, str(len(img)), None, enc, c_type, "")
-                msgSuccess = msgSuccess + img
-                writeResponse(conn, msgSuccess)
-        
-        elif "/info" in method[1]:
-            if method[0] == "GET":
-                query = method[1].split("?")
-                data = "No Data"
-
-                try:
-                    tipe = exctractUrl(query[1], "type")
-                    if tipe == "time":
-                        data = "{}".format(datetime.datetime.now())
-                    elif tipe == "random":
-                        data = "{}".format(randint(111111,999999))
-                except (IndexError, ValueError) as e:
-                    pass
-
-                status = "200 OK"
-                c_type = "text/plain; charset=UTF-8"
-                msgSuccess = renderMessage(status, str(len(data)), None, None, c_type, data)
-                writeResponse(conn, msgSuccess)
-
-        elif method[1] == "/":
-            status = "302 Found"
-            loc = "/hello-world"
-            msgSuccess = renderMessage(status, None, loc, None, None, None)
-            writeResponse(conn, msgSuccess)
-        
-        else:
-            status = "404 Not Found"
-            c_type = "text/plain; charset=UTF-8"
-            msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
-            raise ValueError("URL Not Found")
-        
-        if (method[0] != "POST") and (method[0] != "GET"):
-            status = "501 Not Implemented"
-            c_type = "text/plain; charset=UTF-8"
-            msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
-            raise ValueError("Method not implemented")
-            
-    except IndexError:
-        print(traceback.format_exc())
+        route.dispatch(cleanURL(req.header["path"]), req.header["method"])(conn, req)
+    except TypeError as e:
+        if route.findPath(cleanURL(req.header["path"])):
+            notImplemented(conn, req)
+            return
+        notFound(conn, req)
         return
-    
-    except ValueError:
-        print(traceback.format_exc())
-        writeResponse(conn, msgErr)
-        return
-    
-    return
-    
 
+def cleanURL(url):
+    return url.split("?")[0]
+    
 def writeResponse(conn, message):
     conn.sendall(message)
 
@@ -239,12 +247,7 @@ def connect(host, port):
 
                 data = conn.recv(1024)
                 req = HTTPRequest(data)
-                continue
-
-                data = data.decode("utf-8").replace("\r", "")
-                header = data.split("\n")
-
-                handler(conn, header)
+                handler(conn, req)
 
                 conn.shutdown(socket.SHUT_WR)
                 conn.close()
