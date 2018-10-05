@@ -5,14 +5,67 @@ from urllib.parse import parse_qs
 
 import socket
 import sys
+import json
 import traceback
 import os
 import base64
 import datetime
 
+class HTTPRequest:
+    def __init__(self, request):
+        self._raw_request = request
+        self._build_header()
+        self._build_body()
+    
+    def _build_header(self):
+        raw_head = self._split_request()[0]
+        head = raw_head.split("\n")
+        
+        # Get method, path, and http version
+        temp = head[0].split(" ")
+        self.header = {
+            "method"        : temp[0],
+            "path"          : temp[1],
+            "http_version"  : temp[2],
+        }
+
+        # Get Content-type and Content-length
+        for info in head:
+            if "Content-Type" in info:
+                self.header["content_type"] = info.split(" ")[1]
+                continue
+            if "Content-Length" in info:
+                self.header["content_length"] = info.split(" ")[1]
+        
+        print(self.header)
+
+
+    def _build_body(self):
+        self._raw_body = self._split_request()[1]
+    
+    def _split_request(self):
+        return self._raw_request.decode(
+            "utf-8").replace("\r", "").split("\n\n")
+    
+    def body_json(self):
+        return json.loads('[{}]'.format(self._raw_body))
+    
+    def body_query(self, query):
+        return parse_qs(self._raw_body)[query]
+
+class Route:
+    def __init__(self):
+        self._route = []
+
+    def route(self, path, method, handler):
+        self._route.append({"method": method, "path": path, "handler": handler})
+    
+    def dispatch(self, path, method):
+        return next((item for item in self.route if (item["path"] in path) and item["method"] == method), None)
 
 def main():
-    HOST = socket.gethostbyname(socket.gethostname())
+    # HOST = socket.gethostbyname(socket.gethostname())
+    HOST = "127.0.0.1"
     PORT = int(sys.argv[1])
 
     # Serve the connection
@@ -183,7 +236,12 @@ def connect(host, port):
         while True:
             try:
                 conn, addr = s.accept()
-                data = conn.recv(1024).decode("utf-8").replace("\r", "")
+
+                data = conn.recv(1024)
+                req = HTTPRequest(data)
+                continue
+
+                data = data.decode("utf-8").replace("\r", "")
                 header = data.split("\n")
 
                 handler(conn, header)
