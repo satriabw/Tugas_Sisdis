@@ -85,7 +85,8 @@ def getRoot(conn, request):
     print(debugger)
     status = "302 Found"
     loc = "/hello-world"
-    msgSuccess = renderMessage(status, None, loc, None, None, None)
+    c_type = "text/plain; charset=UTF-8"
+    msgSuccess = renderMessage(status, str(21+len(loc)), loc, None, c_type, None)
     writeResponse(conn, msgSuccess)
 
 @validation
