@@ -19,10 +19,8 @@ class Route:
         self._route.append({"method": method, "path": path, "handler": handler})
     
     def dispatch(self, path, method):
-        print("Jalan ga ni")
         for item in self._route:
             if item["path"] == path and item["method"] == method:
-                print(item)
                 return item["handler"]
         return None
     
@@ -202,7 +200,7 @@ def main():
 
 def handler(conn, req):
     try:
-        debugger = "=== Got Request ===\n{}\n===Got Header====\n".format(req._raw_request, req.header)
+        debugger = "=== Got Request ===\n{}\n===Got Header====\n{}\n".format(req._raw_request, req.header)
         print(debugger)
         route.dispatch(cleanURL(req.header["path"]), req.header["method"])(conn, req)
     except TypeError as e:
@@ -231,7 +229,7 @@ def renderMessage(stat, c_length, location, encoding, c_type, data):
         content_length = "Content-Length: {}\r\n".format(c_length)
         msg = msg + content_length
     if location != None:
-        loc = "Location: {}\n".format(location)
+        loc = "Location: {}\r\n".format(location)
         msg = msg + loc
     if encoding != None:
         enc = "Content-Transfer-Encoding: {}\r\n".format(encoding)
