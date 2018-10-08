@@ -83,7 +83,8 @@ def validation(func):
 
 @validation
 def getRoot(conn, request):
-    print("Hitted succesfully")
+    debugger = "Hooray getRoot end point is hitted\n"
+    print(debugger)
     status = "302 Found"
     loc = "/hello-world"
     msgSuccess = renderMessage(status, None, loc, None, None, None)
@@ -161,6 +162,8 @@ def badRequest(conn, request):
 
 @validation
 def postHelloWorld(conn, request):
+    debugger = "Hooray postHelloWorld end point is hitted\n"
+    print(debugger)
     try:
         if request.header["content_type"] == "application/x-www-form-urlencoded":
             name = request.body_query("name")[0]
@@ -199,8 +202,8 @@ def main():
 
 def handler(conn, req):
     try:
-        print(req._raw_request)
-        print(req.header)
+        debugger = "=== Got Request ===\n{}\n===Got Header====\n".format(req._raw_request, req.header)
+        print(debugger)
         route.dispatch(cleanURL(req.header["path"]), req.header["method"])(conn, req)
     except TypeError as e:
         print(traceback.format_exc())
@@ -214,28 +217,30 @@ def cleanURL(url):
     return url.split("?")[0]
     
 def writeResponse(conn, message):
+    debugger = "=== Got Message ===\n{}\n".format(message)
+    print(debugger)
     conn.sendall(message)
 
 def renderMessage(stat, c_length, location, encoding, c_type, data):
     msg = ""
     if stat != None:
-        status = "HTTP/1.0 {}\n".format(stat)
+        status = "HTTP/1.0 {}\r\n".format(stat)
         msg = msg + status
-    msg = msg + "Connection: close\n"
+    msg = msg + "Connection: close\r\n"
     if c_length != None:
-        content_length = "Content-Length: {}\n".format(c_length)
+        content_length = "Content-Length: {}\r\n".format(c_length)
         msg = msg + content_length
     if location != None:
         loc = "Location: {}\n".format(location)
         msg = msg + loc
     if encoding != None:
-        enc = "Content-Transfer-Encoding: {}\n".format(encoding)
+        enc = "Content-Transfer-Encoding: {}\r\n".format(encoding)
         msg = msg + enc
     if c_type != None:
-        content_type = "Content-Type: {}\n".format(c_type)
+        content_type = "Content-Type: {}\r\n".format(c_type)
         msg = msg + content_type
     if data != None:
-        msg = msg + "\n" + data
+        msg = msg + "\r\n" + data
     return bytes(msg, "utf-8")
 
 def exctractUrl(url, query):
