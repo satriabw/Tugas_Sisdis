@@ -173,7 +173,7 @@ def postHelloWorld(conn, request):
                 data = html.replace("__HELLO__", str(name))
 
             status = "200 OK"
-            c_type = "text/html"
+            c_type = "text/html; charset=UTF-8"
             msgSuccess = renderMessage(status, str(len(data)), None, None, c_type, data)
             writeResponse(conn, msgSuccess)
         else:  
