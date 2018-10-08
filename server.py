@@ -222,7 +222,7 @@ def writeResponse(conn, message):
 def renderMessage(stat, c_length, location, encoding, c_type, data):
     msg = ""
     if stat != None:
-        status = "HTTP/1.0 {}\r\n".format(stat)
+        status = "HTTP/1.1 {}\r\n".format(stat)
         msg = msg + status
     msg = msg + "Connection: close\r\n"
     if c_length != None:
