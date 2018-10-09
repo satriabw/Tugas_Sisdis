@@ -25,7 +25,7 @@ class Route:
         pattern = re.compile(r'/api/plusone/[0-9]*[0-9]$')
         match = re.match(pattern, path)
         if match != None:
-            path = "/api/plus_one/<:digit>"
+            path = "/api/plusone/<:digit>"
         for item in self._route:
             if item["path"] == path and item["method"] == method:
                 return item["handler"]
@@ -129,6 +129,16 @@ def getBackground(conn, request):
     enc = "base64"
     msgSuccess = renderMessage(status, str(len(img)), None, enc, c_type, "")
     msgSuccess = msgSuccess + img
+    writeResponse(conn, msgSuccess)
+
+@validation
+def getSpesifikasi(conn, request):
+    with open("./spesifikasi.yaml", "r") as f:
+        yaml = f.read()
+    
+    status = "200 OK"
+    c_type = "text/x-yaml; charset=UTF-8"
+    msgSuccess = renderMessage(status, str(len(yaml)), None, None, c_type, yaml)
     writeResponse(conn, msgSuccess)
 
 @validation
@@ -244,7 +254,7 @@ def writeCounter(c):
         data = json.dump(count, json_file)
 
 def getApiVersion():
-    with open('spefisikasi.yaml', 'r') as f:
+    with open('./spesifikasi.yaml', 'r') as f:
         doc = yaml.load(f)
     return doc["info"]["version"]
 
@@ -282,6 +292,7 @@ def main():
     route.route("GET", "/info", getInfo)
     route.route("GET", "/api/hello", helloAPI)
     route.route("GET", "/api/plusone/<:digit>", plusOneAPI)
+    route.rpute("GET", "/api/spesifikasi.yaml", getSpesifikasi)
 
     #Post Method
     route.route("POST", "/api/hello", helloAPI)
