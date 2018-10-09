@@ -248,7 +248,6 @@ def writeCounter(c):
     with open('counter.json', 'w') as json_file:  
         data = json.dump(count, json_file)
 
-@validation
 def getApiVersion():
     with open('./spesifikasi.yaml', 'r') as f:
         doc = yaml.load(f)
