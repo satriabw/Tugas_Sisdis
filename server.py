@@ -227,7 +227,7 @@ def helloAPI(conn, request):
         res = "Good {}, {}".format(data["state"], name)
         json_http_ok(conn, count=count, currentvisit=current_visit, response=res)
     except KeyError:
-        badRequestJson(conn)
+        badRequestJson(conn, "'request' is a required property")
 
 @validation
 def plusOneAPI(conn, request):
@@ -265,8 +265,8 @@ def methodNotAllowedJson(conn):
     title = "Method Not Allowed"
     json_http_error(conn, detail, status, title)
 
-def badRequestJson(conn):
-    detail = "Please use http version 1.0 or 1.1"
+def badRequestJson(conn, d):
+    detail = d
     status = "400"
     title = "Bad Request"
     json_http_error(conn, detail, status, title)
