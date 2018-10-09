@@ -9,6 +9,7 @@ import json
 import traceback
 import os
 import base64
+import yaml
 import datetime
 import requests
 import re
@@ -21,7 +22,7 @@ class Route:
         self._route.append({"method": method, "path": path, "handler": handler})
     
     def dispatch(self, path, method):
-        pattern = re.compile(r'/api/plus_one/[0-9]*[0-9]$')
+        pattern = re.compile(r'/api/plusone/[0-9]*[0-9]$')
         match = re.match(pattern, path)
         if match != None:
             path = "/api/plus_one/<:digit>"
@@ -150,10 +151,10 @@ def getInfo(conn, request):
     writeResponse(conn, msgSuccess)
 
 def notFound(conn, request):
-    status = "404 Not Found"
-    c_type = "text/plain; charset=UTF-8"
-    msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
-    writeResponse(conn, msgErr)
+    detail = "The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again."
+    status = "404"
+    title = "Not Found"
+    json_http_error(conn, detail, status, title)
 
 def notImplemented(conn, request):
     status = "501 Not Implemented"
@@ -225,7 +226,8 @@ def helloAPI(conn, request):
 
 
 def plusOneAPI(conn, request):
-    pass
+    val = int(request.header["path"].split("/")[-1])
+    json_http_ok(conn, plusoneret=val+1)
 
 def getTime(t_raw):
     t = datetime.datetime.strptime(t_raw, "%Y-%m-%d %H:%M:%S")
@@ -241,8 +243,13 @@ def writeCounter(c):
     with open('counter.json', 'w') as json_file:  
         data = json.dump(count, json_file)
 
+def getApiVersion():
+    with open('spefisikasi.yaml', 'r') as f:
+        doc = yaml.load(f)
+    return doc["info"]["version"]
+
 def json_http_ok(conn, **kwargs):
-    res_dict = {'apiversion': 1}
+    res_dict = {'apiversion': getApiVersion()}
     for key, value in kwargs.items():
         res_dict[key] = value
     data = json.dumps(res_dict)
@@ -274,7 +281,7 @@ def main():
     route.route("GET", "/background", getBackground)
     route.route("GET", "/info", getInfo)
     route.route("GET", "/api/hello", helloAPI)
-    route.route("GET", "/api/plus_one/<:digit>", plusOneAPI)
+    route.route("GET", "/api/plusone/<:digit>", plusOneAPI)
 
     #Post Method
     route.route("POST", "/api/hello", helloAPI)
