@@ -10,6 +10,8 @@ import traceback
 import os
 import base64
 import datetime
+import requests
+import re
 
 class Route:
     def __init__(self):
@@ -19,6 +21,10 @@ class Route:
         self._route.append({"method": method, "path": path, "handler": handler})
     
     def dispatch(self, path, method):
+        pattern = re.compile(r'/api/plus_one/[0-9]*[0-9]$')
+        match = re.match(pattern, path)
+        if match != None:
+            path = "/api/plus_one/<:digit>"
         for item in self._route:
             if item["path"] == path and item["method"] == method:
                 return item["handler"]
@@ -76,7 +82,8 @@ def validation(func):
     def func_wrapper(conn, request):
         if (request.header["http_version"]  not in "HTTP/1.0") and (request.header["http_version"]  not in "HTTP/1.1"):
             badRequest(conn, request)
-        func(conn, request)
+        else:
+            func(conn, request)
     return func_wrapper
 
 @validation
@@ -182,6 +189,79 @@ def postHelloWorld(conn, request):
     except (IndexError, KeyError, ValueError) as e:
         badRequest(conn, request)
 
+def validateHelloAPI(func):
+    def func_wrapper(conn, request):
+        if (request.header["http_version"]  not in "HTTP/1.0") and (request.header["http_version"]  not in "HTTP/1.1"):
+            detail = "Please use http version 1.0 or 1.1"
+            status = "400"
+            title = "Bad Request"
+            json_http_error(conn, detail, status, title)           
+        elif request.header["method"] != "POST":
+            detail = "Method is not allowed, please use POST method"
+            status = "405"
+            title = "Method Not Allowed"
+            json_http_error(conn, detail, status, title)
+        else:
+            func(conn, request)
+    return func_wrapper
+
+@validateHelloAPI
+def helloAPI(conn, request):    
+    req = requests.get(url='172.22.0.222:5000')
+    data = req.json()
+    current_visit = getTime(data["datetime"])
+    
+    try:
+        name = request.body_json()[0]["request"]
+        count = getCounter() + 1
+        writeCounter(count)
+        res = "Good {}, {}".format(data["state"], name)
+        json_http_ok(conn, count=count, currentvisit=current_visit, response=res)
+    except KeyError:
+        detail = "'request' is a required property"
+        status = "400"
+        title = "Bad Request"
+        json_http_error(conn, detail, status, title)
+
+
+def plusOneAPI(conn, request):
+    pass
+
+def getTime(t_raw):
+    t = datetime.datetime.strptime(t_raw, "%Y-%m-%d %H:%M:%S")
+    return t.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+def getCounter():
+    with open('counter.json', 'r') as json_file:  
+        data = json.load(json_file)
+    return data["count"]
+
+def writeCounter(c):
+    count = {"count": c}
+    with open('counter.json', 'w') as json_file:  
+        data = json.dump(count, json_file)
+
+def json_http_ok(conn, **kwargs):
+    res_dict = {'apiversion': 1}
+    for key, value in kwargs.items():
+        res_dict[key] = value
+    data = json.dumps(res_dict)
+    # Build Response
+    status = "200 OK"
+    c_type = "application/json; charset=UTF-8"
+    msgErr = renderMessage(status, str(len(data)), None, None, c_type, data)
+    writeResponse(conn, msgErr)
+
+def json_http_error(conn, detail, status, title):
+    res_dict = {'detail': detail, 'status': status, 'title': title}
+    data = json.dumps(res_dict)
+    status = "{} {}".format(status, title)
+    c_type = "application/json; charset=UTF-8"
+    msgErr = renderMessage(status, str(len(data)), None, None, c_type, data)
+    writeResponse(conn, msgErr)
+    
+    
+
 def main():
     # HOST = socket.gethostbyname(socket.gethostname())
     HOST = "0.0.0.0"
@@ -193,9 +273,24 @@ def main():
     route.route("GET", "/style", getStyle)
     route.route("GET", "/background", getBackground)
     route.route("GET", "/info", getInfo)
+    route.route("GET", "/api/hello", helloAPI)
+    route.route("GET", "/api/plus_one/<:digit>", plusOneAPI)
 
     #Post Method
+    route.route("POST", "/api/hello", helloAPI)
     route.route("POST", "/hello-world", postHelloWorld)
+
+    # PUT
+    route.route("PUT", "/api/hello", helloAPI)
+
+    #PATCH
+    route.route("PATCH", "/api/hello", helloAPI)
+
+    #DELETE
+    route.route("DELETE", "/api/hello", helloAPI)
+
+    #HEAD
+    route.route("HEAD", "/api/hello", helloAPI)
 
     # Serve the connection
     connect(HOST, PORT)
