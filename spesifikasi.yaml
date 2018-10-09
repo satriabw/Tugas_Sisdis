@@ -50,8 +50,8 @@ paths:
           description: "successful operation"
           schema:
             $ref: "#/definitions/Plusoneret"
-        400:
-          description: "Not a number"
+        404:
+          description: "Path Not Found"
 definitions:
   Request:
     title: request
