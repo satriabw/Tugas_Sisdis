@@ -227,10 +227,7 @@ def helloAPI(conn, request):
         res = "Good {}, {}".format(data["state"], name)
         json_http_ok(conn, count=count, currentvisit=current_visit, response=res)
     except KeyError:
-        detail = "'request' is a required property"
-        status = "400"
-        title = "Bad Request"
-        json_http_error(conn, detail, status, title)
+        badRequestJson(conn)
 
 @validation
 def plusOneAPI(conn, request):
