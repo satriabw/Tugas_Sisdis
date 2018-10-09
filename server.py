@@ -218,7 +218,7 @@ def validateHelloAPI(func):
 def helloAPI(conn, request):    
     req = requests.get(url='http://172.22.0.222:5000')
     data = req.json()
-    current_visit = "{}".format(datetime.datetime.now())
+    current_visit = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     
     try:
         name = request.body_json()[0]["request"]
