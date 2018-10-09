@@ -210,6 +210,8 @@ def validateHelloAPI(func):
             badRequestJson(conn)     
         elif request.header["method"] != "POST":
             methodNotAllowedJson(conn)
+        elif if request.header["content_type"] != "application/json":
+            methodNotAllowedJson(conn)
         else:
             func(conn, request)
     return func_wrapper
