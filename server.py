@@ -137,7 +137,7 @@ def getSpesifikasi(conn, request):
         yaml = f.read()
     
     status = "200 OK"
-    c_type = "text/x-yaml; charset=UTF-8"
+    c_type = "text/plain; charset=UTF-8"
     msgSuccess = renderMessage(status, str(len(yaml)), None, None, c_type, yaml)
     writeResponse(conn, msgSuccess)
 
@@ -161,10 +161,12 @@ def getInfo(conn, request):
     writeResponse(conn, msgSuccess)
 
 def notFound(conn, request):
-    detail = "The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again."
-    status = "404"
-    title = "Not Found"
-    json_http_error(conn, detail, status, title)
+    if "/api" in request.header["path"]:
+        notFoundJson(conn)
+    status = "404 Not Found"
+    c_type = "text/plain; charset=UTF-8"
+    msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
+    writeResponse(conn, msgErr)
 
 def notImplemented(conn, request):
     status = "501 Not Implemented"
@@ -173,6 +175,8 @@ def notImplemented(conn, request):
     writeResponse(conn, msgErr)
 
 def badRequest(conn, request):
+    if "/api" in request.header["path"]:
+        badRequestJson(conn)
     status = "400 Bad Request"
     c_type = "text/plain; charset=UTF-8"
     msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
@@ -203,15 +207,9 @@ def postHelloWorld(conn, request):
 def validateHelloAPI(func):
     def func_wrapper(conn, request):
         if (request.header["http_version"]  not in "HTTP/1.0") and (request.header["http_version"]  not in "HTTP/1.1"):
-            detail = "Please use http version 1.0 or 1.1"
-            status = "400"
-            title = "Bad Request"
-            json_http_error(conn, detail, status, title)           
+            badRequestJson(conn)     
         elif request.header["method"] != "POST":
-            detail = "Method is not allowed, please use POST method"
-            status = "405"
-            title = "Method Not Allowed"
-            json_http_error(conn, detail, status, title)
+            methodNotAllowedJson(conn)
         else:
             func(conn, request)
     return func_wrapper
@@ -220,7 +218,7 @@ def validateHelloAPI(func):
 def helloAPI(conn, request):    
     req = requests.get(url='172.22.0.222:5000')
     data = req.json()
-    current_visit = getTime(data["datetime"])
+    current_visit = "{}".format(datetime.datetime.now())
     
     try:
         name = request.body_json()[0]["request"]
@@ -234,7 +232,7 @@ def helloAPI(conn, request):
         title = "Bad Request"
         json_http_error(conn, detail, status, title)
 
-
+@validation
 def plusOneAPI(conn, request):
     val = int(request.header["path"].split("/")[-1])
     json_http_ok(conn, plusoneret=val+1)
@@ -253,11 +251,30 @@ def writeCounter(c):
     with open('counter.json', 'w') as json_file:  
         data = json.dump(count, json_file)
 
+@validation
 def getApiVersion():
     with open('./spesifikasi.yaml', 'r') as f:
         doc = yaml.load(f)
     return doc["info"]["version"]
 
+def notFoundJson(conn):
+    detail = "The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again."
+    status = "404"
+    title = "Not Found"
+    json_http_error(conn, detail, status, title)
+
+def methodNotAllowedJson(conn):
+    detail = "Method is not allowed, please use POST method"
+    status = "405"
+    title = "Method Not Allowed"
+    json_http_error(conn, detail, status, title)
+
+def badRequestJson(conn):
+    detail = "Please use http version 1.0 or 1.1"
+    status = "400"
+    title = "Bad Request"
+    json_http_error(conn, detail, status, title)
+    
 def json_http_ok(conn, **kwargs):
     res_dict = {'apiversion': getApiVersion()}
     for key, value in kwargs.items():
@@ -277,8 +294,6 @@ def json_http_error(conn, detail, status, title):
     msgErr = renderMessage(status, str(len(data)), None, None, c_type, data)
     writeResponse(conn, msgErr)
     
-    
-
 def main():
     # HOST = socket.gethostbyname(socket.gethostname())
     HOST = "0.0.0.0"
