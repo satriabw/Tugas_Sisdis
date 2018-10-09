@@ -216,7 +216,7 @@ def validateHelloAPI(func):
 
 @validateHelloAPI
 def helloAPI(conn, request):    
-    req = requests.get(url='172.22.0.222:5000')
+    req = requests.get(url='http://172.22.0.222:5000')
     data = req.json()
     current_visit = "{}".format(datetime.datetime.now())
     
