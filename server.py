@@ -292,7 +292,7 @@ def main():
     route.route("GET", "/info", getInfo)
     route.route("GET", "/api/hello", helloAPI)
     route.route("GET", "/api/plusone/<:digit>", plusOneAPI)
-    route.rpute("GET", "/api/spesifikasi.yaml", getSpesifikasi)
+    route.route("GET", "/api/spesifikasi.yaml", getSpesifikasi)
 
     #Post Method
     route.route("POST", "/api/hello", helloAPI)
