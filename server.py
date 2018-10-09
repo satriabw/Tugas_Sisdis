@@ -176,7 +176,7 @@ def notImplemented(conn, request):
 
 def badRequest(conn, request):
     if "/api" in request.header["path"]:
-        badRequestJson(conn)
+        badRequestJson(conn, "Please use proper http version")
     status = "400 Bad Request"
     c_type = "text/plain; charset=UTF-8"
     msgErr = renderMessage(status, str(len(status)), None, None, c_type, status)
@@ -207,11 +207,11 @@ def postHelloWorld(conn, request):
 def validateHelloAPI(func):
     def func_wrapper(conn, request):
         if (request.header["http_version"]  not in "HTTP/1.0") and (request.header["http_version"]  not in "HTTP/1.1"):
-            badRequestJson(conn)     
+            badRequestJson(conn, "Please use proper http version")     
         elif request.header["method"] != "POST":
-            methodNotAllowedJson(conn)
+            methodNotAllowedJson(conn, "Method is not allowed, please use POST method")
         elif request.header["content_type"] != "application/json":
-            methodNotAllowedJson(conn)
+            methodNotAllowedJson(conn, "please use application/json")
         else:
             func(conn, request)
     return func_wrapper
@@ -261,8 +261,8 @@ def notFoundJson(conn):
     title = "Not Found"
     json_http_error(conn, detail, status, title)
 
-def methodNotAllowedJson(conn):
-    detail = "Method is not allowed, please use POST method"
+def methodNotAllowedJson(conn, d):
+    detail = d
     status = "405"
     title = "Method Not Allowed"
     json_http_error(conn, detail, status, title)
